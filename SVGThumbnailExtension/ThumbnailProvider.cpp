@@ -7,7 +7,13 @@
 #include <QtCore/QFile>
 #include <QString>
 #include <QDateTime>
+#include <QtWinExtras>
+#include <qt_windows.h> 
+#include <QWindow>
+#include <QBitmap>
+#include <QtWinExtras/qwinfunctions.h> 
 #include "assert.h"
+#include <QPixmap>
 
 using namespace Gdiplus;
 CThumbnailProvider::CThumbnailProvider()
@@ -30,7 +36,7 @@ CThumbnailProvider::~CThumbnailProvider()
 
 
 STDMETHODIMP CThumbnailProvider::QueryInterface(REFIID riid,
-                                                void** ppvObject)
+    void** ppvObject)
 {
     static const QITAB qit[] = 
     {
@@ -59,7 +65,7 @@ STDMETHODIMP_(ULONG) CThumbnailProvider::Release()
 }
 
 STDMETHODIMP CThumbnailProvider::Initialize(IStream *pstm, 
-                                            DWORD grfMode)
+    DWORD grfMode)
 {
     ULONG len;
     STATSTG stat;
@@ -83,11 +89,12 @@ STDMETHODIMP CThumbnailProvider::Initialize(IStream *pstm,
 
 STDMETHODIMP CThumbnailProvider::GetThumbnail(UINT cx, 
                                               HBITMAP *phbmp, 
-                                              WTS_ALPHATYPE *pdwAlpha)
+    WTS_ALPHATYPE *pdwAlpha)
 {
 	*phbmp = NULL; 
     *pdwAlpha = WTSAT_ARGB;
-
+    int c = 0;
+    QApplication* app = new QApplication(c, (char **)0, 0);
     int width, height;
     QSize size = renderer.defaultSize();
 
@@ -102,12 +109,6 @@ STDMETHODIMP CThumbnailProvider::GetThumbnail(UINT cx,
         height = cx;
     }
 
-    QFile * f = new QFile("C:\\dev\\svg.log");
-    f->open(QFile::Append);
-    f->write(QString("Size: %1 \n.").arg(cx).toAscii());
-    f->flush();
-    f->close();
-
     QImage * device = new QImage(width, height, QImage::Format_ARGB32);
     device->fill(Qt::transparent);
     QPainter * painter = new QPainter();
@@ -116,8 +117,8 @@ STDMETHODIMP CThumbnailProvider::GetThumbnail(UINT cx,
 
     painter->begin(device);
     painter->setRenderHints(QPainter::Antialiasing |
-                            QPainter::SmoothPixmapTransform |
-                            QPainter::TextAntialiasing);
+        QPainter::SmoothPixmapTransform |
+        QPainter::TextAntialiasing);
     assert(device->paintingActive() && painter->isActive());
     if(loaded){
         renderer.render(painter);
@@ -134,24 +135,22 @@ STDMETHODIMP CThumbnailProvider::GetThumbnail(UINT cx,
     painter->end();
 
     assert(!device->isNull());
-#ifndef NDEBUG
-    device->save(QString("C:\\dev\\%1.png").arg(QDateTime::currentMSecsSinceEpoch()), "PNG");
-#endif
-    *phbmp = QPixmap::fromImage(*device).toWinHBITMAP(QPixmap::Alpha);
-    assert(*phbmp != NULL);
+    QPixmap m = QPixmap::fromImage(*device);
+    *phbmp = QtWin::toHBITMAP(m, QtWin::HBitmapFormat::HBitmapAlpha);
 
     delete painter;
     delete device;
+    delete app;
 
 	if( *phbmp != NULL )
-		return NOERROR;
-	return E_NOTIMPL;
+        return NOERROR;
+    return E_NOTIMPL;
 
 }
 
 
 STDMETHODIMP CThumbnailProvider::GetSite(REFIID riid, 
-                                         void** ppvSite)
+    void** ppvSite)
 {
     if (m_pSite)
     {

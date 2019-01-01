@@ -1,15 +1,21 @@
-#-------------------------------------------------
-#
-# Project created by QtCreator 2012-03-18T17:01:34
-#
-#-------------------------------------------------
-
-QT       += svg
 
 TARGET = SVGThumbnailExtension
 TEMPLATE = lib
-
-CONFIG(release, debug|release):DEFINES += NDEBUG
+CONFIG(release, debug|release) {
+    DEFINES += NDEBUG
+}
+CONFIG(debug, debug|release) {
+    DEFINES += DEBUG
+}
+CONFIG(release, debug|release):
+CONFIG += dll
+CONFIG += create_prl
+CONFIG += link_prl
+CONFIG +=debug_and_release
+CONFIG -= import_plugins
+QT = core gui winextras svg widgets
+QWT_CONFIG += QwtSvg
+LIBS += -lshell32 -luser32
 
 win32:LIBS += \
     shlwapi.lib \
@@ -27,25 +33,6 @@ HEADERS +=\
     ThumbnailProvider.h \
     ClassFactory.h \
     Common.h
-
-symbian {
-    MMP_RULES += EXPORTUNFROZEN
-    TARGET.UID3 = 0xE6F54BF5
-    TARGET.CAPABILITY = 
-    TARGET.EPOCALLOWDLLDATA = 1
-    addFiles.sources = SVGThumbnailExtension.dll
-    addFiles.path = !:/sys/bin
-    DEPLOYMENT += addFiles
-}
-
-unix:!symbian {
-    maemo5 {
-        target.path = /opt/usr/lib
-    } else {
-        target.path = /usr/lib
-    }
-    INSTALLS += target
-}
 
 DEF_FILE += \
     ThumbnailProvider.def

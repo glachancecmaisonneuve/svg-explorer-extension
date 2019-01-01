@@ -1,6 +1,7 @@
 #define INITGUID
 #include "Common.h"
-
+#include <QtCore/qsettings.h>
+#include <QtCore/qlibraryinfo.h>
 
 HINSTANCE g_hinstDll = NULL;
 LONG g_cRef = 0;
@@ -29,42 +30,45 @@ STDAPI DeleteRegistryKeys(REGKEY_DELETEKEY* aKeys, ULONG cKeys);
 QApplication * app;
 
 BOOL APIENTRY DllMain(HINSTANCE hinstDll,
-                      DWORD dwReason, 
-                      LPVOID pvReserved)
+    DWORD dwReason,
+    LPVOID pvReserved)
 {
-   switch (dwReason)
-   {
-   case DLL_PROCESS_ATTACH:
-      g_hinstDll = hinstDll;
-      int c = 0;
-      app = new QApplication(c, (char **)0, 0);
-      break;
-   }
-   return TRUE;
+    switch (dwReason)
+    {
+    case DLL_PROCESS_ATTACH:
+        g_hinstDll = hinstDll;
+        int c = 0;
+        app = new QApplication(c, (char **)0, 0);
+        QSettings settings("HKEY_CURRENT_USER\\SOFTWARE\\svgextension", QSettings::NativeFormat);
+        QCoreApplication::addLibraryPath(settings.value("libraryPath").toString());
+
+        break;
+    }
+    return TRUE;
 }
 
 STDAPI_(HINSTANCE) DllInstance()
 {
-   return g_hinstDll;
+    return g_hinstDll;
 }
 
 STDAPI DllCanUnloadNow()
 {
-   return g_cRef ? S_FALSE : S_OK;
+    return g_cRef ? S_FALSE : S_OK;
 }
 
 STDAPI_(ULONG) DllAddRef()
 {
-   LONG cRef = InterlockedIncrement(&g_cRef);
-   return cRef;
+    LONG cRef = InterlockedIncrement(&g_cRef);
+    return cRef;
 }
 
 STDAPI_(ULONG) DllRelease()
 {
-   LONG cRef = InterlockedDecrement(&g_cRef);
-   if (0 > cRef)
-      cRef = 0;
-   return cRef;
+    LONG cRef = InterlockedDecrement(&g_cRef);
+    if (0 > cRef)
+        cRef = 0;
+    return cRef;
 }
 
 STDAPI DllRegisterServer()
@@ -73,14 +77,18 @@ STDAPI DllRegisterServer()
 
     ZeroMemory(szModule, sizeof(szModule));
     GetModuleFileName(g_hinstDll, szModule, ARRAYSIZE(szModule));
+    int c = 0;
+    QApplication* app = new QApplication(c, (char **)0, 0);
+    QSettings s("HKEY_CURRENT_USER\\SOFTWARE\\svgextension", QSettings::NativeFormat);
+    s.setValue("libraryPath", app->libraryPaths()[0]);
 
-	//uncomment the following
+    //uncomment the following
     REGKEY_SUBKEY_AND_VALUE keys[] = {
                                         {HKEY_CLASSES_ROOT, L"CLSID\\" szCLSID_SampleThumbnailProvider, NULL, REG_SZ, (DWORD_PTR)L"Sample Thumbnail Provider"},
                                         {HKEY_CLASSES_ROOT, L"CLSID\\" szCLSID_SampleThumbnailProvider L"\\InprocServer32", NULL, REG_SZ, (DWORD_PTR)szModule},
                                         {HKEY_CLASSES_ROOT, L"CLSID\\" szCLSID_SampleThumbnailProvider L"\\InprocServer32", L"ThreadingModel", REG_SZ, (DWORD_PTR)L"Apartment"},
                                         {HKEY_CLASSES_ROOT, L".SVG\\shellex\\{E357FCCD-A995-4576-B01F-234630154E96}", NULL, REG_SZ, (DWORD_PTR)szCLSID_SampleThumbnailProvider}
-                                     };
+    };
     return CreateRegistryKeys(keys, ARRAYSIZE(keys));
 }
 
